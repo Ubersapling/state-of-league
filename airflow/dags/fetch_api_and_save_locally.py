@@ -12,18 +12,6 @@ RANKS = ["EMERALD", "DIAMOND"]
 DIVISIONS = ["I", "II", "III", "IV"]
 PAGE = 1
 
-# Define a DAG with appropriate configurations
-dag = DAG(
-    "riot_api_to_local_file",
-    start_date=datetime(2023, 1, 1),
-    schedule_interval=None, # Set to manually trigger only
-    catchup=False,
-    default_args={
-        "retries": 1,
-        "retry_delay": timedelta(minutes=5)
-    }
-)
-
 def current_timestamp():
     return datetime.strftime(datetime.now(), "%Y%m%dT%H:%M:%S")
 
@@ -36,7 +24,7 @@ def get_summoners_by_league(rank, division):
     else:
         response.raise_for_status()
 
-# Define a function which fetches data from the Riot Games API and saves it locally in parquet format
+# Define a function which fetches data from the Riot Games API and saves it locally in json format
 def fetch_riot_api_and_save_locally(rank, division):
     output_file = f"../../data/bronze/summoners_{rank.lower()}_{division}_{current_timestamp()}.json"
     try:
@@ -47,7 +35,19 @@ def fetch_riot_api_and_save_locally(rank, division):
         print(f"API call error: {e}")
         return None
 
-# Define a task using the above function
+# Define a DAG with appropriate configurations
+dag = DAG(
+    "riot_api_to_local_file",
+    start_date=datetime(2023, 1, 1),
+    schedule_interval=None, # Set to manually trigger only
+    catchup=False,
+    default_args={
+        "retries": 1,
+        "retry_delay": timedelta(minutes=5)
+    }
+)
+
+# Define tasks to retrieve summoners in each rank between Emerald and Diamond
 for rank in RANKS:
     for division in DIVISIONS:
         fetch_and_save_task = PythonOperator(
